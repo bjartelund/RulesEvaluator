@@ -1,0 +1,119 @@
+@page "/ingest-rules"
+@using Grains
+@inject IGrainFactory GrainFactory
+@rendermode InteractiveServer
+
+<PageTitle>Ingest Rules</PageTitle>
+
+<div class="container mt-5">
+    <h1>Ingest Hiring Rules</h1>
+    <p class="text-muted">Upload your policy text to generate and validate Prolog rules.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="policyId" class="form-label">Policy ID</label>
+                <input type="text"
+                       class="form-control"
+                       id="policyId"
+                       @bind="_policyId"
+                       placeholder="e.g., hiring-policy-2024">
+            </div>
+
+            <div class="mb-3">
+                <label for="policyText" class="form-label">Policy Text</label>
+                <textarea class="form-control"
+                          id="policyText"
+                          @bind="_policyText"
+                          rows="20"
+                          placeholder="Paste your hiring policy text here..."></textarea>
+                <small class="form-text text-muted">Include criteria like required experience, skills, education, etc.</small>
+            </div>
+
+            <button class="btn btn-primary"
+                    @onclick="IngestPolicy"
+                    disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Processing...</span>
+                }
+                else
+                {
+                    <span>Ingest Policy</span>
+                }
+            </button>
+
+            @if (!string.IsNullOrEmpty(_statusMessage))
+            {
+                <div class="alert @(_isSuccess ? "alert-success" : "alert-danger") mt-3" role="alert">
+                    @_statusMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_isSuccess)
+    {
+        <div class="alert alert-info mt-3" role="alert">
+            <strong>Ready to evaluate candidates!</strong>
+            Go to <a href="/evaluate-candidate" class="alert-link">Evaluate Candidate</a> and use the policy ID <code>@_policyId</code>.
+        </div>
+    }
+</div>
+
+@code {
+    private string _policyId = "";
+    private string _policyText = "";
+    private string _statusMessage = "";
+    private bool _isLoading;
+    private bool _isSuccess;
+
+    private async Task IngestPolicy()
+    {
+        if (string.IsNullOrWhiteSpace(_policyId))
+        {
+            _statusMessage = "Please enter a Policy ID.";
+            _isSuccess = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_policyText))
+        {
+            _statusMessage = "Please enter the policy text.";
+            _isSuccess = false;
+            return;
+        }
+
+        _isLoading = true;
+        _statusMessage = "";
+
+        try
+        {
+            var grain = GrainFactory.GetGrain<IRulesGrain>(_policyId);
+            var result = await grain.IngestPolicyAsync(_policyText);
+
+            if (result)
+            {
+                _statusMessage = $"✓ Policy '{_policyId}' successfully ingested and validated!";
+                _isSuccess = true;
+                // Clear the form on success
+                _policyText = "";
+            }
+            else
+            {
+                _statusMessage = "✗ Policy ingestion failed. The policy text may not be valid or the rules could not be generated.";
+                _isSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"✗ Error: {ex.Message}";
+            _isSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

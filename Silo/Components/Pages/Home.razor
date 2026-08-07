@@ -1,0 +1,38 @@
+@page "/"
+
+<PageTitle>Home</PageTitle>
+
+<div class="container mt-5">
+    <h1>Rules Evaluator</h1>
+    <p class="text-muted">Ingest hiring policies as Prolog rules, review them, and evaluate candidates against them.</p>
+
+    <div class="row mt-4 g-3">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">1. Ingest Rules</h5>
+                    <p class="card-text text-muted">Paste a hiring policy and generate validated Prolog rules for it.</p>
+                    <a href="/ingest-rules" class="btn btn-primary">Ingest Rules</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">2. View Rules</h5>
+                    <p class="card-text text-muted">Look up the rules currently ingested for a given policy ID.</p>
+                    <a href="/view-rules" class="btn btn-primary">View Rules</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">3. Evaluate Candidate</h5>
+                    <p class="card-text text-muted">Submit a candidate CV and see how it stacks up against the policy.</p>
+                    <a href="/evaluate-candidate" class="btn btn-primary">Evaluate Candidate</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

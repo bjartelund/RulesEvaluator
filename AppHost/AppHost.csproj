@@ -1,0 +1,21 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UserSecretsId>c86dbc54-a567-41d5-a997-a480448e4be2</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Silo\Silo.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Aspire.Hosting.OpenAI" Version="13.4.6" />
+      <PackageReference Include="Aspire.Hosting.Orleans" Version="13.4.6" />
+      <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
+    </ItemGroup>
+
+</Project>

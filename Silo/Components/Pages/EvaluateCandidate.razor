@@ -1,0 +1,173 @@
+@page "/evaluate-candidate"
+@using Grains
+@inject IGrainFactory GrainFactory
+@rendermode InteractiveServer
+
+<PageTitle>Evaluate Candidate</PageTitle>
+
+<div class="container mt-5">
+    <h1>Evaluate Candidate</h1>
+    <p class="text-muted">Submit a CV to evaluate it against the ingested hiring rules.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="policyId" class="form-label">Policy ID</label>
+                <input type="text"
+                       class="form-control"
+                       id="policyId"
+                       @bind="_policyId"
+                       placeholder="e.g., hiring-policy-2024">
+                <small class="form-text text-muted">Use the same Policy ID from the Ingest Rules page.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="cvText" class="form-label">Candidate CV</label>
+                <textarea class="form-control"
+                          id="cvText"
+                          @bind="_cvText"
+                          rows="20"
+                          placeholder="Paste the candidate's CV here..."></textarea>
+                <small class="form-text text-muted">Include relevant experience, skills, education, and other qualifications.</small>
+            </div>
+
+            <button class="btn btn-primary"
+                    @onclick="HandleEvaluate"
+                    disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Evaluating...</span>
+                }
+                else
+                {
+                    <span>Evaluate Candidate</span>
+                }
+            </button>
+
+            <a href="/ingest-rules" class="btn btn-secondary ms-2">
+                Back to Ingest Rules
+            </a>
+
+            @if (!string.IsNullOrEmpty(_statusMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @_statusMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_evaluationResult != null)
+    {
+        <div class="mt-4">
+            <div class="card @(_evaluationResult.Eligible ? "border-success" : "border-danger")">
+                <div class="card-header @(_evaluationResult.Eligible ? "bg-success text-white" : "bg-danger text-white")">
+                    <h5 class="mb-0">Evaluation Result</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        @if (_evaluationResult.Eligible)
+                        {
+                            <div class="display-4 text-success mb-3">✓</div>
+                            <h3 class="text-success">Candidate is Eligible</h3>
+                            <p class="lead">This candidate meets the hiring criteria.</p>
+                        }
+                        else
+                        {
+                            <div class="display-4 text-danger mb-3">✗</div>
+                            <h3 class="text-danger">Candidate is Not Eligible</h3>
+                            <p class="lead">This candidate does not meet the hiring criteria.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (_evaluationResult.RuleResults.Count > 0)
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Rule Breakdown</h5>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var rule in _evaluationResult.RuleResults)
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="ms-2 me-auto">
+                                        <div class="fw-bold">
+                                            @(rule.Satisfied ? "✓" : "✗") @rule.Name
+                                        </div>
+                                        @if (rule.References.Count > 0)
+                                        {
+                                            <small class="text-muted">Source: @string.Join(", ", rule.References)</small>
+                                        }
+                                    </div>
+                                    <span class="badge @(rule.Satisfied ? "bg-success" : "bg-danger") rounded-pill">
+                                        @(rule.Satisfied ? "Fulfilled" : "Not fulfilled")
+                                    </span>
+                                </div>
+                                <pre class="mt-2 mb-0 bg-light p-2 rounded"><code>@rule.RuleText</code></pre>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            <button class="btn btn-outline-primary mt-3" @onclick="ResetForm">
+                Evaluate Another Candidate
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private string _policyId = "";
+    private string _cvText = "";
+    private string _statusMessage = "";
+    private bool _isLoading;
+    private EvaluationResult? _evaluationResult;
+
+    private async Task HandleEvaluate()
+    {
+        if (string.IsNullOrWhiteSpace(_policyId))
+        {
+            _statusMessage = "Please enter a Policy ID.";
+            _evaluationResult = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_cvText))
+        {
+            _statusMessage = "Please enter the candidate's CV.";
+            _evaluationResult = null;
+            return;
+        }
+
+        _isLoading = true;
+        _statusMessage = "";
+        _evaluationResult = null;
+
+        try
+        {
+            var grain = GrainFactory.GetGrain<IRulesGrain>(_policyId);
+            _evaluationResult = await grain.EvaluateCandidateAsync(_cvText);
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"✗ Error evaluating candidate: {ex.Message}";
+            _evaluationResult = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        _cvText = "";
+        _evaluationResult = null;
+        _statusMessage = "";
+    }
+}

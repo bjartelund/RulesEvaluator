@@ -1,0 +1,115 @@
+@page "/view-rules"
+@using Grains
+@inject IGrainFactory GrainFactory
+@rendermode InteractiveServer
+
+<PageTitle>View Rules</PageTitle>
+
+<div class="container mt-5">
+    <h1>Active Rules</h1>
+    <p class="text-muted">Look up the rules currently ingested for a policy.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="policyId" class="form-label">Policy ID</label>
+                <div class="input-group">
+                    <input type="text"
+                           class="form-control"
+                           id="policyId"
+                           @bind="_policyId"
+                           placeholder="e.g., hiring-policy-2024">
+                    <button class="btn btn-primary" @onclick="LoadRules" disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Load Rules
+                    </button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_statusMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @_statusMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_program != null)
+    {
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Rules (@_program.Clauses.Count)</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var clause in _program.Clauses)
+                {
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">
+                                    @(string.IsNullOrWhiteSpace(clause.Name) ? (clause.Head.Functor ?? "(unnamed)") : clause.Name)
+                                </div>
+                                @if (clause.References.Count > 0)
+                                {
+                                    <small class="text-muted">Source: @string.Join(", ", clause.References)</small>
+                                }
+                            </div>
+                            <span class="badge @(clause.Type == "rule" ? "bg-primary" : "bg-secondary")">
+                                @clause.Type
+                            </span>
+                        </div>
+                        <pre class="mt-2 mb-0 bg-light p-2 rounded"><code>@FormatClausePreview(clause)</code></pre>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private string _policyId = "";
+    private string _statusMessage = "";
+    private bool _isLoading;
+    private PrologProgram? _program;
+
+    private async Task LoadRules()
+    {
+        if (string.IsNullOrWhiteSpace(_policyId))
+        {
+            _statusMessage = "Please enter a Policy ID.";
+            _program = null;
+            return;
+        }
+
+        _isLoading = true;
+        _statusMessage = "";
+        _program = null;
+
+        try
+        {
+            var grain = GrainFactory.GetGrain<IRulesGrain>(_policyId);
+            _program = await grain.GetRulesAsync();
+
+            if (_program is null || _program.Clauses.Count == 0)
+            {
+                _statusMessage = $"No rules have been ingested yet for policy '{_policyId}'.";
+                _program = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"✗ Error loading rules: {ex.Message}";
+            _program = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatClausePreview(Clause clause) => clause.ToPrologCode();
+}
