@@ -1,3 +1,6 @@
 <Solution>
-  <Project Path="RulesEvaluator.csproj" />
+  <Project Path="AppHost/AppHost.csproj" />
+  <Project Path="Grains/Grains.csproj" />
+  <Project Path="ServiceDefaults/ServiceDefaults.csproj" />
+  <Project Path="Silo/Silo.csproj" />
 </Solution>
