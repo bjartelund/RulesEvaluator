@@ -1,5 +1,6 @@
 using Microsoft.Extensions.AI;
 using OpenAI;
+using Orleans.Dashboard;
 using ServiceDefaults;
 using Silo.Components;
 
@@ -13,8 +14,9 @@ builder.AddServiceDefaults();
 // AddRedisClustering's keyed service lookup fails at startup.
 builder.AddKeyedRedisClient(name: "redis");
 
-builder.UseOrleans(_ =>
+builder.UseOrleans(siloBuilder =>
 {
+    siloBuilder.AddDashboard();
 });
 
 builder.AddKeyedOpenAIClient(name: "chat");
@@ -56,4 +58,5 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapOrleansDashboard("/dashboard");
 app.Run();
