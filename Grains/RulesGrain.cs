@@ -42,6 +42,12 @@ public class RulesGrain(
             "never as a bare atom with no parentheses (e.g. 'has_standard_sections' by itself is invalid; it must be " +
             "'has_standard_sections(Subject, true)'). This also applies to comparison operators: '>=' and '=<' must appear with " +
             "their two operands (e.g. 'N >= 300'), never as bare atoms on their own.\n" +
+            "   Term structure (always include 'kind' and 'args', populate only the fields matching that kind):\n" +
+            "   - atom (e.g. 'true', 'false', 'my_atom'): {kind: 'atom', value: 'atom_name', name: null, functor: null, args: []}\n" +
+            "   - number (e.g. 123, 45.6): {kind: 'number', value: 123, name: null, functor: null, args: []}\n" +
+            "   - variable (e.g. Subject, X, N): {kind: 'variable', value: null, name: 'Subject', functor: null, args: []}\n" +
+            "   - compound (e.g. has_email(Subject, true)): {kind: 'compound', value: null, name: null, functor: 'has_email', args: [{...Term...}, {...Term...}]}\n" +
+            "   NEVER include fields that don't apply to the term's kind, and NEVER duplicate any JSON keys (especially 'functor' or 'name').\n\n" +
             "6. Always emit exactly one additional top-level clause with head 'eligible(Subject)', whose body conjoins every " +
             "other named requirement predicate for that same Subject. This is the overall pass/fail verdict for the candidate " +
             "and must be present even if it does nothing but AND together all the other named rules - evaluation always queries " +
@@ -59,7 +65,13 @@ public class RulesGrain(
             "list operations (e.g. 'skills'), and 'string' for anything else (e.g. a category or free-text " +
             "atom). Every leaf predicate referenced anywhere in the rules must have a matching entry here - a " +
             "predicate with no entry, or the wrong type, means the fact extraction step downstream will request " +
-            "the wrong kind of value and the rule can never be satisfied.";
+            "the wrong kind of value and the rule can never be satisfied.\n\n" +
+            "CRITICAL JSON VALIDATION REQUIREMENTS:\n" +
+            "- Your entire response must be valid JSON matching the provided schema exactly.\n" +
+            "- NEVER duplicate any JSON object keys (e.g., 'functor' appearing twice in the same object).\n" +
+            "- Each Term object must have 'kind' and 'args' fields. Include 'value' ONLY for atoms/numbers, " +
+            "  'name' ONLY for variables, 'functor' ONLY for compound terms.\n" +
+            "- The schema validation is strict: a single misformatted term aborts the entire ingestion, so precision is critical.";
 
     var chatOptions = new ChatOptions
     {
@@ -773,25 +785,30 @@ public class RulesGrain(
                                            "properties": {
                                              "kind": {
                                                "type": "string",
-                                               "enum": ["atom", "number", "variable", "compound"]
+                                               "enum": ["atom", "number", "variable", "compound"],
+                                               "description": "Type of term: 'atom' (constants like 'true' or 'my_atom'), 'number' (integer or float), 'variable' (uppercase identifier like 'X' or 'Subject'), or 'compound' (functor with arguments)"
                                              },
                                              "value": {
-                                               "type": ["string", "number", "null"]
+                                               "type": ["string", "number", "null"],
+                                               "description": "For atoms/numbers: the literal value. For variables/compounds: null."
                                              },
                                              "name": {
-                                               "type": ["string", "null"]
+                                               "type": ["string", "null"],
+                                               "description": "For variables: the variable name (uppercase, never empty or '_'). For others: null."
                                              },
                                              "functor": {
-                                               "type": ["string", "null"]
+                                               "type": ["string", "null"],
+                                               "description": "For compound terms: the predicate name. For atoms/variables/numbers: null."
                                              },
                                              "args": {
                                                "type": "array",
+                                               "description": "For compound terms: the arguments (each a Term). For atoms/variables/numbers: empty array [].",
                                                "items": {
                                                  "$ref": "#/$defs/Term"
                                                }
                                              }
                                            },
-                                           "required": ["kind", "value", "name", "functor", "args"],
+                                           "required": ["kind", "args"],
                                            "additionalProperties": false
                                          }
                                        }
